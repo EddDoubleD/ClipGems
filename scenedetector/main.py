@@ -1,29 +1,19 @@
 import uvicorn
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
 from uuid import uuid4
 from typing import Dict
 import boto3
 import asyncio
-from enum import Enum
 import os
-from scenedetect import detect, VideoManager, SceneManager, open_video, split_video_ffmpeg, StatsManager
+from scenedetect import SceneManager, open_video, StatsManager
 from scenedetect.detectors import ContentDetector
+
+from src.model.dto import ProcessRequest, JobStatus
 
 app = FastAPI()
 
-AWS_KEY_ID=os.getenv('AWS_KEY_ID')
-AWS_KEY=os.getenv('AWS_KEY')
-
-class JobStatus(str, Enum):
-    PENDING = 'PENDING'
-    WORK = 'WORK'
-    DONE = 'DONE'
-
-
-class ClipRequest(BaseModel):
-    bucket: str
-    path: str
+AWS_KEY_ID = os.getenv('AWS_KEY_ID')
+AWS_KEY = os.getenv('AWS_KEY')
 
 
 jobs: Dict[str, Dict] = {}
@@ -36,9 +26,8 @@ async def health():
 
 
 @app.post("/api/v1/clip")
-async def create_clip(request: ClipRequest):
+async def create_clip(request: ProcessRequest):
     job_id = str(uuid4())
-
 
     # Создание нового бакета для результатов
     # s3.create_bucket(Bucket=result_bucket)
@@ -62,7 +51,7 @@ async def job_status(job: str):
     return {"status": jobs[job]["status"]}
 
 
-async def process_video(job_id: str, bucket: str, path: str, result_bucket: str):
+async def process_video(job_id: str, bucket: str, path: str):
     file_name = path.split("/")[-1]
     local_path = f"/tmp/{file_name}"
     out = f"/tmp/{job_id}.csv"
@@ -76,7 +65,6 @@ async def process_video(job_id: str, bucket: str, path: str, result_bucket: str)
         )
         # Обновление статуса задачи
         jobs[job_id]["status"] = JobStatus.WORK
-
 
         # Скачивание видео
         s3.download_file(Bucket=bucket, Key=path, Filename=local_path)
@@ -106,6 +94,7 @@ async def process_video(job_id: str, bucket: str, path: str, result_bucket: str)
         jobs[job_id]["status"] = JobStatus.DONE
         jobs[job_id]["stat"] = out
 
+
 def split_video_into_scenes(threshold=27.0) -> SceneManager:
     """
     Open our video, create a scene manager, and add a detector.
@@ -120,5 +109,4 @@ def split_video_into_scenes(threshold=27.0) -> SceneManager:
 
 
 if __name__ == '__main__':
-
     uvicorn.run(app, host="0.0.0.0", port=8000)

@@ -1,3 +1,5 @@
 /.envrc
 
-/src/settings/
+/.idea/
+/volumes/
+/secret/
