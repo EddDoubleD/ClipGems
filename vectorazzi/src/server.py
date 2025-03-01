@@ -14,10 +14,9 @@ from PIL import Image
 from fastapi import FastAPI, HTTPException
 from scenedetect import SceneManager, open_video, StatsManager
 from scenedetect.detectors import ContentDetector
-
-from vectorazzi.src import ProcessRequest, JobStatus
-from vectorazzi.src import S3ClientFactory
-from vectorazzi.src import GemRepository
+from dto import ProcessRequest, JobStatus
+from file_storage import S3ClientFactory
+from gem_repository import GemRepository
 
 logging.basicConfig(
     level=logging.INFO,
