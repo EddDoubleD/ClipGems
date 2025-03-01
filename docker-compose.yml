@@ -60,16 +60,6 @@ services:
       - "etcd"
       - "minio"
 
-  vectorazzi:
-    container_name: vectorazzi
-    image: edddoubled/vectorazzi:v1.0
-    volumes:
-      - ${DOCKER_VOLUME_DIRECTORY:-.}/volumes/vectorazzi:/app/data
-    ports:
-      - "8080:8080"
-    depends_on:
-      - "standalone"
-
 networks:
   default:
     name: milvus
