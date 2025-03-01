@@ -26,7 +26,7 @@ class GemRepository(object):
             collection_name=self.collection,
             data=[data],
             anns_field=self.vector_field,
-            params={"nprobe": 10},
+            params={"metric_type": "IP"},
             limit=limit,
             output_fields=out
         )

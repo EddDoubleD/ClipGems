@@ -9,7 +9,7 @@ DataBase: standalone milvus
 db config script: common/milvus
 local run
 ```shell
-source .envrc && python ./paparazzi/src/main.py 
+source .envrc && python ./paparazzi/src/server.py 
 ```
 
 ## IaC

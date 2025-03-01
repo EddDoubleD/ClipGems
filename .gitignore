@@ -3,3 +3,7 @@
 /.idea/
 /volumes/
 /secret/
+
+/vectorazzi/bin
+/vectorazzi/include
+/vectorazzi/lib

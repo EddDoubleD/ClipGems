@@ -6,14 +6,18 @@ from typing import Dict
 from uuid import uuid4
 
 import clip
+import cv2
+import numpy as np
 import torch
 import uvicorn
 from PIL import Image
 from fastapi import FastAPI, HTTPException
+from scenedetect import SceneManager, open_video, StatsManager
+from scenedetect.detectors import ContentDetector
 
-from model.dto import ProcessRequest, JobStatus
-from reposytory.file_storage import S3ClientFactory
-from reposytory.gem_repository import GemRepository
+from vectorazzi.src.vectorazzi.dto import ProcessRequest, JobStatus
+from vectorazzi.src.vectorazzi.file_storage import S3ClientFactory
+from vectorazzi.src.vectorazzi.gem_repository import GemRepository
 
 logging.basicConfig(
     level=logging.INFO,
@@ -46,7 +50,7 @@ model, preprocess = clip.load("ViT-B/32", device=device)
 lock = threading.Lock()
 
 
-@app.get("/api/v1/health")
+@app.get("/healthcheck")
 async def health():
     return {"status": "healthy"}
 
@@ -63,7 +67,7 @@ async def job_stat():
     return {"jobs": jobs}
 
 
-@app.post("/api/v1/photo/process")
+@app.post("/api/v1/photo")
 async def process_photo(request: ProcessRequest):
     """
     
@@ -89,8 +93,24 @@ async def process_photo(request: ProcessRequest):
             raise HTTPException(status_code=500, detail="cannot create job")
 
 
+@app.post("/api/v1/clip")
+async def create_clip(request: ProcessRequest):
+    job_id = str(uuid4())
+
+    # Создание новой задачи
+    jobs[job_id] = {
+        "status": JobStatus.PENDING,
+        "stat": "",
+    }
+
+    # Запуск обработки видео в фоне
+    asyncio.create_task(process_video(job_id, request.bucket, request.path))
+
+    return {"job_id": job_id}
+
+
 @app.get("/api/v1/search")
-async def emb(text: str):
+async def search(text: str):
     text_input = clip.tokenize([text]).to(device)
     with torch.no_grad():
         features = model.encode_text(text_input)
@@ -101,7 +121,7 @@ async def emb(text: str):
 
         try:
             response = repo.search(float_embedding, out=["bucket", "metadata"])
-            return {"hits": str(response)}
+            return response[0]
         except Exception as e:
             logger.error(f"Search error: {e}")
             raise HTTPException(status_code=500, detail="Search error")
@@ -119,7 +139,7 @@ def normalize_vector(vector):
 
 def create_path(dir_path: str, file_name: str = None):
     if file_name is None:
-        return f"./{dir_path}"
+        return f"./data/{dir_path}"
 
     return f"{dir_path}/{file_name}"
 
@@ -129,9 +149,9 @@ def load_and_preprocess_image(image_path):
     return preprocess(image).unsqueeze(0).to(device)
 
 
-def get_image_features(vector):
+def get_image_features(image):
     with torch.no_grad():
-        image_features = model.encode_image(vector)
+        image_features = model.encode_image(image)
     return image_features
 
 
@@ -186,6 +206,98 @@ async def async_process_photo(job_id: str, bucket: str, file_path: str):
         if os.path.exists(local_dir_path):
             os.rmdir(local_dir_path)
         logger.info(f"End processing job {job_id}")
+
+
+async def process_video(job_id: str, bucket: str, file_path: str):
+    file_name = file_path.split("/")[-1]
+    try:
+        local_dir_path = create_path(job_id)
+        out = f"{local_dir_path}/report.csv"
+        os.mkdir(local_dir_path, mode=0o777)
+        s3 = S3_CLIENT_FACTORY.client()
+        # Обновление статуса задачи
+        jobs[job_id]["status"] = JobStatus.WORK
+        local_file_path = f"{local_dir_path}/{file_name}"
+        # Скачивание видео
+        s3.download_file(Bucket=bucket, Key=file_path, Filename=local_file_path)
+
+        try:
+            video = open_video(local_file_path)
+            scene_manager = split_video_into_scenes()
+            scene_manager.detect_scenes(video, show_progress=True)
+            scene_list = scene_manager.get_scene_list(start_in_scene=True)
+            print('List of scenes obtained:')
+
+            cap = cv2.VideoCapture(local_file_path)
+            fps = round(cap.get(cv2.CAP_PROP_FPS))
+
+            for i, scene in enumerate(scene_list):
+                vectors = []
+                logger.info(f"Scene {i + 1}: Start {scene[0].get_timecode()}, End {scene[1].get_timecode()}")
+                os.mkdir(f'{local_dir_path}/{i + 1}')
+                start_frame = scene[0].get_frames()
+                end_frame = scene[1].get_frames()
+                while cap.isOpened() and start_frame <= end_frame:
+                    ret, frame = cap.read()
+                    if not ret:
+                        break
+
+                    # Если текущий кадр находится в нужном интервале, сохраняем его
+                    current_frame_number = int(cap.get(1)) - 1
+                    if current_frame_number % fps == 0 and start_frame <= current_frame_number <= end_frame:
+
+                        image = Image.fromarray(frame)
+                        image_vector = preprocess(image).unsqueeze(0).to(device)
+                        feature = get_image_features(image_vector)
+                        vectors.append(feature)
+                        # debug options
+                        # output_frame_path = f'frame_{current_frame_number}.jpg'
+                        # cv2.imwrite(f'{local_dir_path}/{i + 1}/{output_frame_path}', frame)
+
+                    start_frame += 1  # Переходим к следующему кадру в интервале
+
+                avg_vector = np.average(vectors, 0)
+                tensor = torch.linalg.Tensor(avg_vector)
+                vector = normalize_vector(tensor)
+                vector_list = vector.tolist()
+                float_embedding = []
+                for x in vector_list[0]:
+                    float_embedding.append(float(x))
+
+                repo.index(
+                    [
+                        {
+                            "pk": f"{bucket}/{file_path}_{i + 1}",
+                            "metadata": {"job_id": job_id, "file_path": file_path, "from": scene[0].get_seconds(), "to": scene[1].get_seconds()},
+                            "embedding": float_embedding,
+                            "bucket": bucket
+                        }
+                    ]
+                )
+            cap.release()
+            # scene_manager.stats_manager.save_to_csv(csv_file=out)
+        except Exception as ex:
+            logger.error(ex)
+        finally:
+            # Обновление статуса задачи
+            jobs[job_id]["status"] = JobStatus.DONE
+    except Exception as ex:
+        logger.error(f"Error processing video: {ex}")
+    finally:
+        jobs[job_id]["status"] = JobStatus.DONE
+
+
+def split_video_into_scenes(threshold=27.0) -> SceneManager:
+    """
+    Open our video, create a scene manager, and add a detector.
+    :param threshold:
+    :return:
+    """
+
+    stats_manager = StatsManager()
+    scene_manager = SceneManager(stats_manager)
+    scene_manager.add_detector(ContentDetector(threshold=threshold))
+    return scene_manager
 
 
 if __name__ == '__main__':
