@@ -15,9 +15,9 @@ from fastapi import FastAPI, HTTPException
 from scenedetect import SceneManager, open_video, StatsManager
 from scenedetect.detectors import ContentDetector
 
-from vectorazzi.src.vectorazzi.dto import ProcessRequest, JobStatus
-from vectorazzi.src.vectorazzi.file_storage import S3ClientFactory
-from vectorazzi.src.vectorazzi.gem_repository import GemRepository
+from vectorazzi.src import ProcessRequest, JobStatus
+from vectorazzi.src import S3ClientFactory
+from vectorazzi.src import GemRepository
 
 logging.basicConfig(
     level=logging.INFO,
