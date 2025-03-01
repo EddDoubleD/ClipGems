@@ -20,6 +20,8 @@ from gem_repository import GemRepository
 
 logging.basicConfig(
     level=logging.INFO,
+    filename="data/app.log",
+    filemode="w",
     format='%(asctime)s %(levelname)s:%(message)s',
     datefmt='%Y-%m-%d %H:%M:%S',
 )
@@ -246,7 +248,7 @@ async def process_video(job_id: str, bucket: str, file_path: str):
                     if current_frame_number % fps == 0 and start_frame <= current_frame_number <= end_frame:
 
                         image = Image.fromarray(frame)
-                        image_vector = preprocess(image).unsqueeze(0).to(device)
+                        image_vector     = preprocess(image).unsqueeze(0).to(device)
                         feature = get_image_features(image_vector)
                         vectors.append(feature)
                         # debug options
@@ -284,6 +286,7 @@ async def process_video(job_id: str, bucket: str, file_path: str):
         logger.error(f"Error processing video: {ex}")
     finally:
         jobs[job_id]["status"] = JobStatus.DONE
+        logger.info(f"End processing job {job_id}")
 
 
 def split_video_into_scenes(threshold=27.0) -> SceneManager:
