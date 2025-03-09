@@ -12,9 +12,9 @@ from scenedetect import open_video
 from messaging.consumer import Consumer
 from messaging.message import Message
 from storage.s3 import S3ClientFactory
-from worker.dto import Event
-from worker.predictor import Predictor
-from worker.utils import create_path, split_video_into_scenes, extract_frames
+from dto import Event
+from predictor import Predictor
+from utils import create_path, split_video_into_scenes, extract_frames
 
 logging.basicConfig(
     level=logging.INFO,

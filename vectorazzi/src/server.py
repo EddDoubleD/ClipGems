@@ -56,6 +56,23 @@ model, preprocess = clip.load("ViT-B/32", device=device)
 lock = threading.Lock()
 
 
+class ProcessRequest(BaseModel):
+    """
+    request for paparazzi processing, the paparazzi must be in the bucket, otherwise you will receive a 404
+    """
+    bucket: str
+    path: str
+
+    def keys(self):
+        return self.bucket + "/" + self.path
+
+
+class JobStatus(str, Enum):
+    PENDING = 'PENDING'
+    WORK = 'WORK'
+    DONE = 'DONE'
+    FAILED = 'FAILED'
+
 @app.get("/healthcheck")
 async def health():
     return {"status": "healthy"}
