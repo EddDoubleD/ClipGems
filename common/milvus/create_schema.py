@@ -15,7 +15,6 @@ if __name__ == '__main__':
         # Add fields to schema
         schema.add_field(field_name="pk", datatype=DataType.VARCHAR, is_primary=True, max_length=512)
         schema.add_field(field_name="embedding", datatype=DataType.FLOAT_VECTOR, dim=512)
-        schema.add_field(field_name="bucket", datatype=DataType.VARCHAR, max_length=128)
         schema.add_field(field_name="metadata", datatype=DataType.JSON)
         # automatically decides the most appropriate index type
         index_params = client.prepare_index_params()

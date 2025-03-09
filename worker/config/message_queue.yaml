@@ -1,0 +1,8 @@
+client:
+  region: ru-central1
+  endpoint: https://message-queue.api.cloud.yandex.net
+  messaging:
+    batch_size: 10
+    message_count: 10
+    wait_timeout: 20
+

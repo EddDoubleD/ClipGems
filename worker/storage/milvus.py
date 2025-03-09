@@ -1,3 +1,5 @@
+import os
+
 from pymilvus import MilvusClient
 
 
@@ -21,15 +23,10 @@ class GemRepository(object):
             data=data
         )
 
-    def search(self, data, limit=5, out=None):
-        if out is None:
-            out = ["pk"]
-
-        return self.client.search(
+    def delete(self, ids: list[str]):
+        deleted = self.client.delete(
             collection_name=self.collection,
-            data=[data],
-            anns_field=self.vector_field,
-            params={"metric_type": "IP"},
-            limit=limit,
-            output_fields=out
+            ids=ids
         )
+
+        return deleted

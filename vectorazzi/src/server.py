@@ -12,6 +12,9 @@ import torch
 import uvicorn
 from PIL import Image
 from fastapi import FastAPI, HTTPException
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
+
 from scenedetect import SceneManager, open_video, StatsManager
 from scenedetect.detectors import ContentDetector
 from dto import ProcessRequest, JobStatus
@@ -42,6 +45,8 @@ except Exception as e:
     exit(1)
 
 app = FastAPI()
+app.mount("/static", StaticFiles(directory="static"), name="static")
+templates = Jinja2Templates(directory="templates")
 
 jobs: Dict[str, Dict] = {}
 
@@ -66,6 +71,12 @@ async def job_status(job: str):
 @app.get("/api/v1/stat")
 async def job_stat():
     return {"jobs": jobs}
+
+@app.get("/home")
+async def read_home(request: Request, search: str = ""):
+    # Фильтрация по поисковому запросу (если требуется)
+    filtered_gems = [gem for gem in gems if search.lower() in gem['metadata']['title'].lower()] if search else gems
+    return templates.TemplateResponse("home.html", {"request": request, "gems": filtered_gems})
 
 
 @app.post("/api/v1/photo")
@@ -152,8 +163,8 @@ def load_and_preprocess_image(image_path):
 
 def get_image_features(image):
     with torch.no_grad():
-        image_features = model.encode_image(image)
-    return image_features
+        features = model.encode_image(image)
+    return features
 
 
 async def async_process_photo(job_id: str, bucket: str, file_path: str):
@@ -170,8 +181,8 @@ async def async_process_photo(job_id: str, bucket: str, file_path: str):
         s3_client.download_file(Bucket=bucket, Key=file_path, Filename=local_file_path)
 
         logger.info(f"Success download file: {file_name} to {local_file_path}")
-        image_vector = load_and_preprocess_image(local_file_path)
-        features = get_image_features(image_vector)
+        image = load_and_preprocess_image(local_file_path)
+        features = get_image_features(image)
         vector = normalize_vector(features)
         vector_list = vector.tolist()
         embedding = ", ".join(f"{x:.32}" for x in vector_list[0])
