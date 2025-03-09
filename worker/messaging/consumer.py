@@ -6,7 +6,7 @@ from typing import List
 import boto3
 import yaml
 
-from message import Message
+from .message import Message
 
 
 class Consumer(object):

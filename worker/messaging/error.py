@@ -1,6 +1,0 @@
-"""
-SQS consumer exceptions
-"""
-
-
-
