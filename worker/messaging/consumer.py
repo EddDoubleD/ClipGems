@@ -6,8 +6,8 @@ from typing import List
 import boto3
 import yaml
 
-from worker.messaging.error import SQSException
-from worker.messaging.message import Message
+from error import SQSException
+from message import Message
 
 
 class Consumer(object):
