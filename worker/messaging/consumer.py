@@ -6,7 +6,6 @@ from typing import List
 import boto3
 import yaml
 
-from error import SQSException
 from message import Message
 
 
@@ -42,6 +41,10 @@ class Consumer(object):
             )
 
         self._running = False
+
+    class SQSException(Exception):
+        """Generic SQS message handling exception"""
+        pass
 
     def handle_message(self, message: Message):
         """
