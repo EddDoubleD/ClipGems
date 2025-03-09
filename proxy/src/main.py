@@ -50,14 +50,10 @@ gems = [
 
 @app.get("/home")
 async def read_home(request: Request, search: str = ""):
-    # Фильтрация по поисковому запросу (если требуется)
-    filtered_gems = [gem for gem in gems if search.lower() in gem['metadata']['title'].lower()] if search else gems
-    return templates.TemplateResponse("home.html", {"request": request, "gems": filtered_gems})
+    if search == "":
+        return templates.TemplateResponse("home.html", {"request": request, "gems": []})
 
-
-@app.get("/search")
-async def read_home(request: str):
-    text_input = clip.tokenize([request]).to(device)
+    text_input = clip.tokenize([search]).to(device)
     with torch.no_grad():
         features = model.encode_text(text_input)
         vector = normalize_vector(features)
@@ -66,8 +62,9 @@ async def read_home(request: str):
             float_embedding.append(float(x))
 
         try:
-            response = repo.search(float_embedding, out=["bucket", "metadata"])
-            return response[0]
+            response = repo.search(float_embedding, out=["pk", "metadata"])
+            gems = [gem['entity'] for gem in response[0]]
+            return templates.TemplateResponse("home.html", {"request": request, "gems": gems})
         except Exception as e:
             logger.error(f"Search error: {e}")
             raise HTTPException(status_code=500, detail="Search error")

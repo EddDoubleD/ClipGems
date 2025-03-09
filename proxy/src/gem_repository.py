@@ -6,8 +6,8 @@ from pymilvus import MilvusClient
 class GemRepositoryConfig(object):
 
     def __init__(self):
-        self.url = os.getenv('url', 'http://localhost:19530')
-        self.token = os.getenv('token', 'root:Milvus')
+        self.url = os.getenv('MILVUS_URL', 'http://localhost:19530')
+        self.token = os.getenv('MILVUS_TOKEN', 'root:Milvus')
 
 
 class GemRepository(object):
@@ -17,12 +17,6 @@ class GemRepository(object):
         self.collection = collection
         self.vector_field = vector_field
 
-    def index(self, data):
-        self.client.insert(
-            collection_name=self.collection,
-            data=data
-        )
-
     def search(self, data, limit=5, out=None):
         if out is None:
             out = ["pk"]
@@ -31,7 +25,7 @@ class GemRepository(object):
             collection_name=self.collection,
             data=[data],
             anns_field=self.vector_field,
-            params={"metric_type": "IP"},
+            params={"metric_type": "COSINE"},
             limit=limit,
             output_fields=out
         )

@@ -36,11 +36,11 @@
             {% for gem in gems %}
             <div class="col-md-4">
                 <div class="card gem-card">
-                    <img src="{{ gem.thumbnail or '/static/default.png' }}" class="card-img-top" alt="{{ gem.metadata.title }}">
+                    <img src="https://storage.yandexcloud.net/{{ gem.pk }}" class="card-img-top" alt="{{ gem.pk }}"/>
                     <div class="card-body">
-                        <h5 class="card-title">{{ gem.metadata.title }}</h5>
-                        <p class="card-text">{{ gem.metadata.description }}</p>
-                        <a href="{{ gem.original }}" class="btn btn-primary" target="_blank">View Original</a>
+                        <h5 class="card-title">{{ gem.metadata.original }}</h5>
+                        <p class="card-text">{{ gem.metadata.type }} upload in {{ gem.metadata.job_id }}</p>
+                        <a href="https://storage.yandexcloud.net/{{ gem.metadata.original }}" class="btn btn-primary" target="_blank">View Original</a>
                     </div>
                 </div>
             </div>

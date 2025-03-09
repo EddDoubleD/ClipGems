@@ -30,3 +30,6 @@ $ sudo docker compose down
 $ sudo rm -rf volumes
 ```
 
+bench
+https://github.com/cvdfoundation/kinetics-dataset/blob/main/README.md
+
