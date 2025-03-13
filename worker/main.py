@@ -1,11 +1,9 @@
 import asyncio
-import logging
 
 from predictor import Predictor
 from gem_finder import GemFinder
 from storage.milvus import GemRepository
 from storage.s3 import S3ClientFactory
-from worker import app_logger
 
 if __name__ == "__main__":
 
