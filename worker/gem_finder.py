@@ -7,24 +7,25 @@ from typing import List
 import cv2
 from PIL import Image
 from storage.milvus import GemRepository
-from scenedetect import open_video
+from scenedetect import open_video, ContentDetector
 
 from messaging.consumer import Consumer
 from messaging.message import Message
 from storage.s3 import S3ClientFactory
 from dto import Event
 from predictor import Predictor
-from utils import create_path, split_video_into_scenes, extract_frames
+from utils import create_path, extract_frames, create_scene_manager
+
 
 logging.basicConfig(
     level=logging.INFO,
-    filename="data/app.log",
+    filename="log/consumer.log",
     filemode="w+",
     format='%(asctime)s %(levelname)s:%(message)s',
     datefmt='%Y-%m-%d %H:%M:%S',
 )
 
-logger = logging.getLogger("gem_finder")
+logger = logging.getLogger(__name__)
 
 
 class GemFinder(Consumer):
@@ -114,6 +115,7 @@ class GemFinder(Consumer):
                         "metadata": {
                             "job_id": event.id,
                             "original": f"{event.bucket_id}/{event.object_id}",
+                            "scene": "",
                             "type": "image"
                         },
                         "embedding": embedding
@@ -152,13 +154,20 @@ class GemFinder(Consumer):
 
         try:
             video = open_video(local_file_path)
-            scene_manager = split_video_into_scenes()
+            detector = ContentDetector(
+                threshold=27.0,
+                min_scene_len=20,
+                kernel_size=13
+            )
+            scene_manager = create_scene_manager(detector)
             scene_manager.detect_scenes(video, show_progress=False)
             scene_list = scene_manager.get_scene_list(start_in_scene=True)
             cap = cv2.VideoCapture(local_file_path)
             for i, scene in enumerate(scene_list):
+                str_scene = str(scene)
                 logger.info(
-                    f"{event.id}: Scene {i + 1}: Start {scene[0].get_timecode()}, End {scene[1].get_timecode()}")
+                    f"{event.id}: Scene {i + 1}: Start {scene[0].get_timecode()}, End {scene[1].get_timecode()}"
+                )
                 local_fragment_dir_path = f'{local_dir_path}/{i + 1}'
                 os.mkdir(local_fragment_dir_path)
                 frames = [Image.fromarray(frame) for frame in extract_frames(capture=cap, scene=scene)]
@@ -180,6 +189,7 @@ class GemFinder(Consumer):
                             "metadata": {
                                 "job_id": event.id,
                                 "original": f"{event.bucket_id}/{event.object_id}",
+                                "scene": str(str_scene),
                                 "type": "video"
                             },
                             "embedding": embedding

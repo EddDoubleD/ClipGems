@@ -9,6 +9,10 @@ import yaml
 from .message import Message
 
 
+class SQSException(Exception):
+    pass
+
+
 class Consumer(object):
 
     def __init__(self, config_path: str = './config/message_queue.yaml'):
