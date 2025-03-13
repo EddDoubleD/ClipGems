@@ -17,7 +17,9 @@ class GemRepository(object):
         self.collection = collection
         self.vector_field = vector_field
 
-    def search(self, data, limit=5, out=None):
+    def search(self, data, limit: int = 10, out=None, params=None):
+        if params is None:
+            params = {"metric_type": "COSINE"}
         if out is None:
             out = ["pk"]
 
@@ -25,7 +27,7 @@ class GemRepository(object):
             collection_name=self.collection,
             data=[data],
             anns_field=self.vector_field,
-            params={"metric_type": "COSINE"},
+            search_params=params,
             limit=limit,
             output_fields=out
         )

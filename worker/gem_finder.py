@@ -156,7 +156,7 @@ class GemFinder(Consumer):
             video = open_video(local_file_path)
             detector = ContentDetector(
                 threshold=27.0,
-                min_scene_len=20,
+                min_scene_len=45,
                 kernel_size=13
             )
             scene_manager = create_scene_manager(detector)

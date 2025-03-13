@@ -49,7 +49,7 @@ gems = [
 
 
 @app.get("/home")
-async def read_home(request: Request, search: str = ""):
+async def read_home(request: Request, search: str = "", limit: int = 10, metric: str = "COSINE"):
     if search == "":
         return templates.TemplateResponse("home.html", {"request": request, "gems": []})
 
@@ -62,12 +62,32 @@ async def read_home(request: Request, search: str = ""):
             float_embedding.append(float(x))
 
         try:
-            response = repo.search(float_embedding, out=["pk", "metadata"])
-            gems = [gem['entity'] for gem in response[0]]
+            responses = repo.search(
+                float_embedding,
+                out=["pk", "metadata"],
+                limit=limit,
+                params={
+                    "metric_type": metric,
+                    "params": {
+                        "radius": 0.2,
+                        "range_filter": 1
+                    }
+                }
+            )
+            gems = [create_gem(response) for response in responses[0]]
             return templates.TemplateResponse("home.html", {"request": request, "gems": gems})
         except Exception as e:
             logger.error(f"Search error: {e}")
             raise HTTPException(status_code=500, detail="Search error")
+
+
+def create_gem(response: dict):
+    gem = {
+        "pk": response["entity"]["pk"],
+        "metadata": response["entity"]["metadata"],
+        "distance": response["distance"]
+    }
+    return gem
 
 
 def normalize_vector(vector):

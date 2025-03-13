@@ -19,11 +19,19 @@
         .gem-card {
             margin-bottom: 30px;
         }
+         .navbar-brand img {
+            width: 50px; /* Установите желаемую ширину */
+            height: 50px; /* Установите желаемую высоту */
+            margin-right: 10px; /* Отступ между логотипом и текстом */
+            object-fit: contain; /* Сохраняет соотношение сторон */
+        }
+
     </style>
 </head>
 <body>
     <nav class="navbar navbar-expand-lg navbar-light bg-light">
         <a class="navbar-brand" href="/home">
+            <img src="static/clip_gems.jpeg" alt="Logo"/>
             ClipGems
         </a>
         <form class="form-inline ml-auto" action="/home" method="get">
@@ -39,7 +47,8 @@
                     <img src="https://storage.yandexcloud.net/{{ gem.pk }}" class="card-img-top" alt="{{ gem.pk }}"/>
                     <div class="card-body">
                         <h5 class="card-title">{{ gem.metadata.original }}</h5>
-                        <p class="card-text">{{ gem.metadata.type }} upload in {{ gem.metadata.job_id }}</p>
+                        <p class="card-text">distance {{ gem.distance }}</p>
+                        <p class="card-text">{{ gem.metadata.type }} meta {{ gem.metadata.scene }}</p>
                         <a href="https://storage.yandexcloud.net/{{ gem.metadata.original }}" class="btn btn-primary" target="_blank">View Original</a>
                     </div>
                 </div>
